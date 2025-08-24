@@ -1,4 +1,4 @@
-# Face-Recognition
+
 # 📸 Facial Recognition Application
 
 ## 📌 Project Overview
@@ -27,13 +27,12 @@ The system performs real-time face detection, feature extraction, and verificati
 
 ---
 
----
 
 ## 📥 Model Download
 The trained **Siamese Neural Network model** is not included in the repository due to large file size.  
 Download it from the link below and place it in the `model/` directory:
 
-🔗 **[Download Siamese Model]([https://drive.google.com/file/d/1w7290K6fZXck_gaOuSFgIOzfDNYYRV85/view?usp=sharing])**
+🔗 **[Download Siamese Model](https://drive.google.com/file/d/1w7290K6fZXck_gaOuSFgIOzfDNYYRV85/view?usp=sharing)**
 
 ---
 
