@@ -47,5 +47,5 @@ I have taken reference from the **Siamese Model PDF** uploaded in this repositor
    git clone https://github.com/yourusername/facial-recognition-app.git
    cd facial-recognition-app
 ---
-## Author
+## 👤 Author
 Atharva Dharmadhikari
