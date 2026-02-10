@@ -31,7 +31,7 @@ class CamApp(App):
         layout.add_widget(self.verification_label)
 
         # Load tensorflow/keras model
-        self.model = tf.keras.models.load_model('siamesemodel.h5', custom_objects={'L1Dist': L1Dist})
+        self.model = tf.keras.models.load_model("siamese_model")
         
         # Setup video capture device
         self.capture = cv2.VideoCapture(0)
@@ -57,60 +57,83 @@ class CamApp(App):
         # Read in image from file path
         byte_img = tf.io.read_file(file_path)
         # Load in the image 
-        img = tf.io.decode_jpeg(byte_img)
+        img = tf.io.decode_jpeg(byte_img, channels=3)
         
         # Preprocessing steps - resizing the image to be 100x100x3
         img = tf.image.resize(img, (100,100))
         # Scale image to be between 0 and 1 
-        img = img / 255.0
+        img = tf.cast(img, tf.float32) / 255.0
+        img = tf.expand_dims(img, axis=0)
+
+        # 🔥 FORCE shape (safety)
+        img = tf.ensure_shape(img, (1, 100, 100, 3))
         
         # Return image
         return img
+        
 
     # Verification function to verify person
     def verify(self, *args):
-        # Specify thresholds
-        detection_threshold = 0.9
-        verification_threshold = 0.7
+        # Thresholds
+        detection_threshold = 0.7
+        verification_threshold = 0.4
 
-        # Capture input image from our webcam
-        SAVE_PATH = os.path.join('application_data', 'input_image', 'input_image.jpg')
+
+        # Capture input image
+        SAVE_PATH = os.path.join(
+            'application_data', 'input_image', 'input_image.jpg'
+        )
+
         ret, frame = self.capture.read()
         frame = frame[120:120+250, 200:200+250, :]
         cv2.imwrite(SAVE_PATH, frame)
 
-        # Build results array
+        verification_dir = os.path.join(
+           'application_data', 'verification_images'
+        )
+
+        # 🔥 Get SavedModel inference function
+        infer = self.model.signatures['serving_default']
+
         results = []
-        for image in os.listdir(os.path.join('application_data', 'verification_images')):
-            input_img = self.preprocess(os.path.join('application_data', 'input_image', 'input_image.jpg'))
-            validation_img = self.preprocess(os.path.join('application_data', 'verification_images', image))
-            
-            # Make Predictions 
-            result = self.model.predict(list(np.expand_dims([input_img, validation_img], axis=1)))
-            results.append(result)
-        
-        # Detection Threshold: Metric above which a prediciton is considered positive 
-        detection = np.sum(np.array(results) > detection_threshold)
-        
-        # Verification Threshold: Proportion of positive predictions / total positive samples 
-        verification = detection / len(os.listdir(os.path.join('application_data', 'verification_images'))) 
+
+        for image in os.listdir(verification_dir):
+            input_img = self.preprocess(SAVE_PATH)
+            validation_img = self.preprocess(
+                os.path.join(verification_dir, image)
+            )
+
+            # ✅ Correct inference for exported model
+            output = infer(
+                input_img=input_img,
+                validation_img=validation_img
+            )
+
+            # Extract confidence score
+            confidence = list(output.values())[0].numpy()[0][0]
+            results.append(confidence)
+
+        results = np.array(results)
+
+        # Detection threshold
+        detection = np.sum(results > detection_threshold)
+
+        # Verification threshold
+        verification = detection / len(results)
         verified = verification > verification_threshold
 
-        # Set verification text 
-        self.verification_label.text = 'Verified' if verified == True else 'Unverified'
+        # Update UI
+        self.verification_label.text = (
+            'Verified' if verified else 'Unverified'
+        )
 
-        # Log out details
-        #Logger.info(results)
-        #Logger.info(np.sum(np.array(results)>0.2))
-        #Logger.info(np.sum(np.array(results)>0.4))
-        #Logger.info(np.sum(np.array(results)>0.5))
-        #Logger.info(np.sum(np.array(results)>0.8))
-        Logger.info(detection)
-        Logger.info(verification)
-        Logger.info(verified)
+        # Logs
+        Logger.info(f"Detection count: {detection}")
+        Logger.info(f"Verification ratio: {verification}")
+        Logger.info(f"Verified: {verified}")
 
-        
         return results, verified
+
 
 
 
